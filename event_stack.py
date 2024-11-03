@@ -2,9 +2,9 @@
 
 class Event:
     def __init__(self, event_type, event_time, details=None):
-        self.event_type = event_type
-        self.event_time = event_time
-        self.details = details
+        self.event_type = event_type  # Type of event (e.g., arrival or departure)
+        self.event_time = event_time  # Time when event occurs
+        self.details = details  # Additional details like job ID
 
 class Node:
     def __init__(self, event):
@@ -18,6 +18,9 @@ class EventStack:
         self.tail = None
 
     def insert_event(self, event):
+        """
+        Insert events in chronological order to ensure the simulation processes events correctly over time.
+        """
         new_node = Node(event)
         if not self.head:
             self.head = self.tail = new_node
@@ -41,6 +44,9 @@ class EventStack:
                 current.prev = new_node
 
     def pop_next_event(self):
+        """
+        Get the next event to process.
+        """
         if not self.head:
             return None
         next_event = self.head.event
