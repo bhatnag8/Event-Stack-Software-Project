@@ -16,28 +16,26 @@ class Queue:
         Adds a job to the queue.
         """
         self.jobs.append(job_id)
-        # print(f"{Fore.GREEN}[+] ADDITION [{job_id}] Queue {self.queue_id}: {self.jobs}{Style.RESET_ALL}")
+        print(f"{Fore.GREEN}[+] ADDITION [{job_id}] Queue {self.queue_id}: {self.jobs}{Style.RESET_ALL}")
 
-    def remove_job(self):
+    def remove_job(self, job_id):
         """
-        Removes a job from the queue.
+        Removes the specified job from the queue by job_id.
         """
-        if self.jobs:
-            job_id = self.jobs.pop(0)
-            # print(f"{Fore.RED}[-] SUBTRACT [{job_id}] Queue {self.queue_id}: {self.jobs}{Style.RESET_ALL}")
+        if job_id in self.jobs:
+            self.jobs.remove(job_id)
+            print(f"{Fore.RED}[-] SUBTRACT [{job_id}] Queue {self.queue_id}: {self.jobs}{Style.RESET_ALL}")
             return job_id
         return None
 
     def generate_service_time(self):
         """
         Generate service times using an exponential distribution.
-        This meets the assumption of identically distributed and independent service times.
         """
         return random.expovariate(self.service_rate)
 
 def generate_poisson_arrival(rate):
     """
     Generates arrival times for jobs using an exponential distribution.
-    This meets the Poisson arrival assumption for Queue 1.
     """
     return random.expovariate(rate)

@@ -9,12 +9,12 @@ def log_event(action, queues):
     """
     Print the action happening and the state of all queues.
     """
-    print("===========================================================")
+
     print(f"{Fore.BLUE}[Simulation] {action}{Style.RESET_ALL}")
     for queue in queues:
         queue_state = f"Queue {queue.queue_id}: {queue.jobs}"
         print(queue_state)
-    print("===========================================================")
+    print("=*==*" * 14)
 
 
 def simulate_arrival(event_stack, job_id, arrival_time, queues):
@@ -43,7 +43,7 @@ def simulate_departure(event_stack, job_id, queue_id, departure_time, queues):
     Handle the departure of a job from a queue and move it to the next queue if available.
     """
     action = f"Job {job_id} departs Queue {queue_id + 1} at time {departure_time:.2f}"
-    queues[queue_id].remove_job()
+    queues[queue_id].remove_job(job_id)
 
     # Move to the next queue if it exists
     if queue_id < len(queues) - 1:
@@ -97,7 +97,7 @@ def main():
             simulate_departure(event_stack, next_event.details["job_id"], next_event.details["queue_id"], current_time,
                                queues)
 
-        time.sleep(0)  # Delay for visualization
+        time.sleep(2)  # Delay for visualization
 
     # Final output of throughput or other metrics if needed
     print("\n================= Simulation Complete =================")
