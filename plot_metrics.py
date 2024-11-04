@@ -16,15 +16,30 @@ def calculate_confidence_interval(data, confidence_level=0.95):
     return mean, margin_of_error
 
 
-def plot_moving_average_queue_lengths(queue_lengths, window_size=100):
+def plot_moving_average_queue_lengths(queue_lengths, initial_window_size=100):
     """
     Plot the moving average of queue length over time for each queue.
+    If the number of data points is less than the window size, adjust the window size accordingly.
     """
     plt.figure()
     for queue_id, lengths in queue_lengths.items():
-        # Calculate moving average for the queue length
-        moving_avg_lengths = [sum(lengths[i:i+window_size]) / window_size for i in range(0, len(lengths) - window_size + 1)]
-        plt.plot(range(window_size, window_size + len(moving_avg_lengths)), moving_avg_lengths, label=f"Queue {queue_id}")
+        if len(lengths) < initial_window_size:
+            # Adjust window size if not enough data points
+            window_size = max(1, len(lengths) // 2)
+        else:
+            window_size = initial_window_size
+
+        if window_size > 1:
+            # Calculate moving average with the adjusted window size
+            moving_avg_lengths = [
+                np.mean(lengths[i:i + window_size]) for i in range(len(lengths) - window_size + 1)
+            ]
+            time_points = range(window_size, window_size + len(moving_avg_lengths))
+            plt.plot(time_points, moving_avg_lengths, label=f"Queue {queue_id}")
+        else:
+            # Fallback to raw data if window size is 1
+            plt.plot(range(len(lengths)), lengths, label=f"Queue {queue_id}", linestyle="--", alpha=0.7)
+
     plt.xlabel("Time (arbitrary units)")
     plt.ylabel("Moving Average Queue Length")
     plt.title("Moving Average Queue Length Over Time")

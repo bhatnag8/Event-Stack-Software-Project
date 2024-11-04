@@ -1,15 +1,12 @@
 # simulation.py
 import time
 from colorama import Fore, Style
-import matplotlib.pyplot as plt
-from numpy.ma.core import count
-
+import numpy as np
 from event_stack import Event, EventStack
 from queue import Queue, generate_poisson_arrival
-from plot_metrics import plot_moving_average_queue_lengths, plot_average_queue_length_per_queue, plot_cumulative_throughput, plot_sojourn_times, plot_utilization, plot_average_queue_length_with_confidence, plot_sojourn_times_with_confidence
-
-import numpy as np
+from plot_metrics import plot_moving_average_queue_lengths, plot_average_queue_length_with_confidence, plot_cumulative_throughput, plot_sojourn_times_with_confidence, plot_utilization
 from scipy.stats import norm
+
 
 def calculate_confidence_interval(data, confidence_level=0.95):
     """
@@ -31,7 +28,7 @@ def log_event(action, queues):
         print(queue_state)
     print("=*==*" * 14)
 
-def simulate_arrival(event_stack, job_id, arrival_time, queues):
+def simulate_arrival(event_stack, job_id, arrival_time, queues, arrival_rate):
     """
     Handle the arrival of a job to the first queue.
     """
@@ -59,8 +56,8 @@ def simulate_departure(event_stack, job_id, queue_id, departure_time, queues):
     queues[queue_id].remove_job(job_id)
 
     # Update throughput for the current queue
-    throughput[queue_id + 1] += 1  # Increment throughput for the current queue
-    queue_throughput_times[queue_id + 1].append(departure_time)  # Track the departure time for cumulative plotting
+    throughput[queue_id + 1] += 1
+    queue_throughput_times[queue_id + 1].append(departure_time)
 
     # Move to the next queue if it exists
     if queue_id < len(queues) - 1:
@@ -77,60 +74,48 @@ def simulate_departure(event_stack, job_id, queue_id, departure_time, queues):
 
     log_event(action, queues)
 
-# simulation.py
-# ... (rest of the code remains the same)
-
-def main():
-    global arrival_rate, job_times, sojourn_times, queue_lengths, throughput, queue_throughput_times
-    arrival_rate = 1.0  # Arrival rate for the Poisson process
-    initial_job_id = 1
+def start(queues, mode, max_value, arrival_rate):
+    global job_times, sojourn_times, queue_lengths, throughput, queue_throughput_times
     job_times = {}
-    sojourn_times = []  # Track total time in the system for each job
-    queue_lengths = {i: [] for i in range(1, 7)}  # Periodic length tracking for each queue
-    throughput = {i: 0 for i in range(1, 7)}  # Count of jobs processed per queue
-    queue_throughput_times = {i: [] for i in range(1, 7)}  # Timestamps for throughput over time
-
-    # Define the queues with service rates
-    queues = [
-        Queue(queue_id=1, service_rate=0.5),
-        Queue(queue_id=2, service_rate=0.7),
-        Queue(queue_id=3, service_rate=0.6),
-        Queue(queue_id=4, service_rate=0.4),
-        Queue(queue_id=5, service_rate=0.1),
-        Queue(queue_id=6, service_rate=0.9),
-    ]
+    sojourn_times = []
+    queue_lengths = {i: [] for i in range(1, len(queues) + 1)}
+    throughput = {i: 0 for i in range(1, len(queues) + 1)}
+    queue_throughput_times = {i: [] for i in range(1, len(queues) + 1)}
 
     # Initialize the event stack
     event_stack = EventStack()
+    initial_job_id = 1
 
     # Schedule the first arrival
     initial_arrival_time = generate_poisson_arrival(arrival_rate)
     event_stack.insert_event(Event("arrival", initial_arrival_time, {"job_id": initial_job_id}))
 
-    # Simulation loop with a maximum time limit
-    max_simulation_time = 10000  # Set maximum simulation time
     current_time = 0
     completed_jobs = 0
 
-    while not event_stack.is_empty() and current_time < max_simulation_time:
+    while not event_stack.is_empty():
         next_event = event_stack.pop_next_event()
         current_time = next_event.event_time
 
+        if mode == 1 and current_time >= max_value:
+            break
+        elif mode == 2 and completed_jobs >= max_value:
+            break
+
         if next_event.event_type == "arrival":
-            simulate_arrival(event_stack, next_event.details["job_id"], current_time, queues)
+            simulate_arrival(event_stack, next_event.details["job_id"], current_time, queues, arrival_rate)
         elif next_event.event_type == "departure":
             simulate_departure(event_stack, next_event.details["job_id"], next_event.details["queue_id"], current_time, queues)
             if next_event.details["queue_id"] == len(queues) - 1:
                 completed_jobs += 1
 
-        # Track queue lengths at regular intervals
-        if completed_jobs % 100 == 0:
+        # Track queue lengths periodically
+        if completed_jobs % 10 == 0:  # Adjust tracking frequency as needed
             for i, queue in enumerate(queues, 1):
                 queue_lengths[i].append(len(queue.jobs))
 
-    # Final output and plot the metrics
+    # Output results and plot metrics
     print("\n================= Simulation Complete =================")
-    print(f"Simulation ran for {max_simulation_time} seconds.")
     print(f"Total jobs completed: {completed_jobs}")
     for i, queue in enumerate(queues, 1):
         print(f"Throughput of Queue {i}: {throughput[i]} jobs")
@@ -142,27 +127,52 @@ def main():
     plot_sojourn_times_with_confidence(sojourn_times)
     plot_utilization(queue_lengths)
 
-    # Step 1: Calculate Confidence Intervals
+    # Calculate and print confidence intervals
     mean_sojourn, mo_error_sojourn = calculate_confidence_interval(sojourn_times)
     print(f"\nMean Sojourn Time: {mean_sojourn:.2f} ± {mo_error_sojourn:.2f} (95% CI)")
 
     for queue_id, lengths in queue_lengths.items():
         mean_queue_length, mo_error_queue_length = calculate_confidence_interval(lengths)
-        print(
-            f"Average Queue Length for Queue {queue_id}: {mean_queue_length:.2f} ± {mo_error_queue_length:.2f} (95% CI)")
+        print(f"Average Queue Length for Queue {queue_id}: {mean_queue_length:.2f} ± {mo_error_queue_length:.2f} (95% CI)")
 
-    # Step 2: Validation with Jackson's Theorem
+    # Validation with Jackson's Theorem
     theoretical_sojourn_time = sum(1 / queue.service_rate for queue in queues)
     theoretical_queue_length = arrival_rate * theoretical_sojourn_time
 
     print(f"\nTheoretical Mean Sojourn Time (Jackson's Theorem): {theoretical_sojourn_time:.2f}")
     print(f"Theoretical Average Queue Length (Jackson's Theorem): {theoretical_queue_length:.2f}")
-
-    # Compare theoretical and observed values
     print(f"\nObserved Mean Sojourn Time: {mean_sojourn:.2f}")
-    for queue_id, lengths in queue_lengths.items():
-        mean_queue_length = np.mean(lengths)
-        print(f"Observed Average Queue Length for Queue {queue_id}: {mean_queue_length:.2f}")
 
 if __name__ == "__main__":
-    main()
+    # Initialize a list of Queue objects, each with a unique queue_id and specified service rate.
+    # The service_rate determines the average time each job spends in the queue (exponential distribution).
+    queues = [
+        Queue(queue_id=1, service_rate=0.5),
+        Queue(queue_id=2, service_rate=0.7),
+        Queue(queue_id=3, service_rate=0.6),
+        Queue(queue_id=4, service_rate=0.4),
+        Queue(queue_id=5, service_rate=0.1),
+    ]
+
+    # Set the simulation mode:
+    # Mode 1: The simulation will run based on a maximum time limit.
+    # Mode 2: The simulation will run until a maximum number of jobs are completed.
+    mode = 1  # Use Mode 1 for time-based simulation; change to 2 for job-based simulation.
+
+    # Define the limit for the simulation based on the selected mode:
+    # - If mode is 1 (time-based), `max_value` represents the maximum simulation time in seconds.
+    # - If mode is 2 (job-based), `max_value` represents the maximum number of jobs to complete.
+    max_value = 70  # Adjust this based on the mode; e.g., 70 seconds for mode 1.
+
+    # Set the arrival rate of jobs into the system:
+    # This rate defines the average number of arrivals per unit of time and affects the job inflow frequency.
+    # For Poisson arrivals, the arrival time intervals follow an exponential distribution with this rate.
+    arrival_rate = 1  # Example rate; adjust based on desired job arrival frequency.
+
+    # Start the simulation by calling `main` with the defined parameters:
+    # - `queues`: The list of initialized Queue objects.
+    # - `mode`: Determines whether the simulation is time-based (1) or job-based (2).
+    # - `max_value`: Represents the time limit (if mode 1) or job limit (if mode 2).
+    # - `arrival_rate`: Controls the frequency of job arrivals into the first queue.
+    start(queues, mode, max_value, arrival_rate)
+
