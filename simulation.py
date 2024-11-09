@@ -147,11 +147,11 @@ if __name__ == "__main__":
     # Initialize a list of Queue objects, each with a unique queue_id and specified service rate.
     # The service_rate determines the average time each job spends in the queue (exponential distribution).
     queues = [
-        Queue(queue_id=1, service_rate=0.5),
-        Queue(queue_id=2, service_rate=0.7),
-        Queue(queue_id=3, service_rate=0.6),
-        Queue(queue_id=4, service_rate=0.4),
-        Queue(queue_id=5, service_rate=0.1),
+        Queue(queue_id=1, service_rate=3.5),
+        Queue(queue_id=2, service_rate=2.7),
+        Queue(queue_id=3, service_rate=5.6),
+        Queue(queue_id=4, service_rate=6.4),
+        Queue(queue_id=5, service_rate=7.1),
     ]
 
     # Set the simulation mode:
@@ -162,12 +162,12 @@ if __name__ == "__main__":
     # Define the limit for the simulation based on the selected mode:
     # - If mode is 1 (time-based), `max_value` represents the maximum simulation time in seconds.
     # - If mode is 2 (job-based), `max_value` represents the maximum number of jobs to complete.
-    max_value = 70  # Adjust this based on the mode; e.g., 70 seconds for mode 1.
+    max_value = 700  # Adjust this based on the mode; e.g., 70 seconds for mode 1.
 
     # Set the arrival rate of jobs into the system:
     # This rate defines the average number of arrivals per unit of time and affects the job inflow frequency.
     # For Poisson arrivals, the arrival time intervals follow an exponential distribution with this rate.
-    arrival_rate = 1  # Example rate; adjust based on desired job arrival frequency.
+    arrival_rate = 3  # Example rate; adjust based on desired job arrival frequency.
 
     # Start the simulation by calling `main` with the defined parameters:
     # - `queues`: The list of initialized Queue objects.
